@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RoleMatch: free tier MVP
 
-## Getting Started
+Resume builder + job description match checker + AI tailoring. No sign-up, no
+database: resumes live in the user's localStorage. Two small API routes call
+Gemini for import and tailoring, so the API key never reaches the browser.
 
-First, run the development server:
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # then paste your key into GEMINI_API_KEY
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Get a key at https://aistudio.google.com/apikey. No key yet? Set `AI_MOCK=1`
+in `.env.local` to get fake AI answers so you can click through the flow.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Before real users:** enable billing on the Google AI project. On the free
+tier Google may use prompts (i.e. users' resumes) to improve its models.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `/` is the landing page with pricing (Plus/Pro shown as "coming soon").
+- `/builder` is the app.
 
-## Learn More
+## Accounts (Supabase + Google sign-in)
 
-To learn more about Next.js, take a look at the following resources:
+Guests can build, score and download. AI import/tailoring needs a free Google
+sign-in; signed-in users' resumes are saved to their account, and signing out
+wipes the browser copy (safe on shared computers). Without Supabase keys the app
+runs in guest-only mode and AI works without sign-in (handy for local dev).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Setup: run `supabase/schema.sql` in the Supabase SQL editor, enable the Google
+provider in Supabase (Authentication → Sign In / Providers), and add
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to
+`.env.local`. Daily AI limits live in the database (`ai_limit` in
+`supabase/schema.sql`); keep them in sync with `src/lib/plans.ts`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Change things quickly
 
-## Deploy on Vercel
+| What | Where |
+|---|---|
+| Product name, tagline, waitlist link | `src/lib/brand.ts` |
+| Sample resume shown to new users | `src/lib/sample.ts` |
+| Skills dictionary (add terms for new fields) | `src/lib/dictionary.ts` |
+| Score weights and recruiter checks | `src/lib/analyze.ts` |
+| Resume templates (look of the PDF) | `src/components/ResumeDocument.tsx` + `.tpl-*` in `src/app/globals.css` |
+| Landing page and pricing copy | `src/app/page.tsx` |
+| Free-tier AI limits | `src/lib/plans.ts` |
+| AI prompts | `src/lib/server/prompts.ts` |
+| AI guardrails (what gets rejected) | `src/lib/ai.ts` |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy (free)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push this folder to a GitHub repo.
+2. Go to vercel.com → Add New Project → import the repo.
+3. Under Environment Variables add `GEMINI_API_KEY`, `GEMINI_MODEL`,
+   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, then Deploy.
+   Then add your live URL + `/auth/callback` to Supabase's allowed redirect URLs.
+4. Optional: add a custom domain in Vercel → Settings → Domains.
+
+## How it is built
+
+- `src/lib/analyze.ts`: deterministic scoring. 60% keyword match (required
+  keywords weigh more than nice-to-haves), 15% measurable impact, 15%
+  completeness, 10% writing quality. Without a job description it shows a
+  "health" score instead.
+- `src/lib/storage.ts`: the only place that reads and writes saved data.
+  When accounts arrive (Plus tier), swap it for Supabase calls.
+- PDF export uses the browser's print engine, so the PDF has real selectable text
+  and embedded fonts. Nothing is turned into an image.
+
+## AI safety net
+
+Every AI suggestion is checked in code before the user sees it
+(`validateTailor` in `src/lib/ai.ts`). A rewrite is dropped if it:
+- adds a number that isn't in the original bullet,
+- mentions a tool/skill the resume doesn't show, unless the AI quoted real
+  evidence from the resume that mentions it (e.g. "GitHub Actions CI" → CI/CD).
+
+## Next (Plus tier)
+
+Supabase auth + database, Stripe (global) / Razorpay (India), usage limits
+stored per account instead of per browser, saved versions per job, cover letters.
+All in this same Next.js project; no separate backend folder.
