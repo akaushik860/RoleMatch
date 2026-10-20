@@ -300,6 +300,8 @@ export function qualityIssues(resume: Resume, pages: number): Issue[] {
 
 // ---------- score ----------
 
+export const SKILLS_ONLY_CREDIT = 0.6;
+
 export interface Analysis {
   hasJd: boolean;
   score: number;
@@ -324,7 +326,11 @@ export function analyze(resume: Resume, jd: string, pages: number): Analysis {
   });
 
   const totalW = keywords.reduce((s, k) => s + k.weight, 0);
-  const matchedW = keywords.filter((k) => k.matched).reduce((s, k) => s + k.weight, 0);
+  // A keyword proven in a bullet or summary earns full credit; one that only sits
+  // in the Skills list earns partial credit, as it does with recruiters.
+  const matchedW = keywords
+    .filter((k) => k.matched)
+    .reduce((s, k) => s + k.weight * (k.skillsOnly ? SKILLS_ONLY_CREDIT : 1), 0);
   const keywordScore = totalW ? (matchedW / totalW) * 100 : 0;
 
   const withNumbers = bullets.filter((t) => NUMBER_RE.test(t)).length;
@@ -400,4 +406,34 @@ export function dictTermsIn(text: string): DictTerm[] {
 
 export function categoryOf(display: string): string {
   return DICTIONARY.find((t) => t.display.toLowerCase() === display.toLowerCase())?.category ?? "tools";
+}
+
+// ---------- adding job keywords the user wants to learn ----------
+
+export const FAMILIAR_LABEL = "Familiar with";
+
+const splitItems = (items: string) => items.split(",").map((x) => x.trim()).filter(Boolean);
+
+/** Adds skills to a "Familiar with" group (created if missing), skipping ones already listed. */
+export function addFamiliarSkills(resume: Resume, names: string[], makeId: () => string): Resume {
+  const existing = new Set(resume.skills.flatMap((g) => splitItems(g.items)).map((x) => x.toLowerCase()));
+  const toAdd = names.filter((n) => !existing.has(n.toLowerCase()));
+  if (!toAdd.length) return resume;
+  const idx = resume.skills.findIndex((g) => g.label.trim().toLowerCase() === FAMILIAR_LABEL.toLowerCase());
+  if (idx === -1) return { ...resume, skills: [...resume.skills, { id: makeId(), label: FAMILIAR_LABEL, items: toAdd.join(", ") }] };
+  return {
+    ...resume,
+    skills: resume.skills.map((g, i) => (i === idx ? { ...g, items: [...splitItems(g.items), ...toAdd].join(", ") } : g)),
+  };
+}
+
+/** Removes a skill from every group; drops a "Familiar with" group left empty. */
+export function removeSkill(resume: Resume, name: string): Resume {
+  const n = name.toLowerCase();
+  return {
+    ...resume,
+    skills: resume.skills
+      .map((g) => ({ ...g, items: splitItems(g.items).filter((x) => x.toLowerCase() !== n).join(", ") }))
+      .filter((g) => g.items || g.label.trim().toLowerCase() !== FAMILIAR_LABEL.toLowerCase()),
+  };
 }

@@ -4,6 +4,7 @@ import type { Analysis, Issue, Keyword } from "@/lib/analyze";
 import { BRAND } from "@/lib/brand";
 import { DOMAIN_LABEL } from "@/lib/dictionary";
 import { FREE_LIMITS } from "@/lib/plans";
+import { prepLink } from "./AddKeywordsDialog";
 
 export function scoreColor(score: number) {
   if (score >= 80) return { text: "text-emerald-600", bg: "bg-emerald-500", ring: "#10b981" };
@@ -138,7 +139,7 @@ export function TailorCard({ tailor, hasJd }: { tailor: TailorState; hasJd: bool
         {tailor.busy ? (
           <>
             <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />
-            Rewriting… (about 15s)
+            Rewriting… (usually under 30s)
           </>
         ) : tailor.needsSignIn ? (
           <>Sign in with Google to {hasJd ? "tailor" : "use AI"}</>
@@ -163,12 +164,18 @@ export function MatchPanel({
   analysis,
   onAddSkill,
   tailor,
+  onAddKeywords,
+  learning,
+  onRemoveLearning,
 }: {
   jd: string;
   onJdChange: (v: string) => void;
   analysis: Analysis;
   onAddSkill: (k: Keyword) => void;
   tailor: TailorState;
+  onAddKeywords: () => void;
+  learning: string[];
+  onRemoveLearning: (skill: string) => void;
 }) {
   const missing = analysis.keywords.filter((k) => !k.matched);
   const missingSkills = missing.filter((k) => k.kind === "skill");
@@ -223,6 +230,13 @@ export function MatchPanel({
                   <Chip key={k.display} k={k} onAdd={() => onAddSkill(k)} />
                 ))}
               </div>
+              <button
+                type="button"
+                onClick={onAddKeywords}
+                className="mt-3 w-full rounded-lg border border-brand/40 bg-blue-50 px-3 py-2 text-sm font-semibold text-brand transition hover:bg-blue-100"
+              >
+                Add job keywords to my resume ({missingSkills.length})
+              </button>
             </>
           ) : (
             <p className="mt-1 text-sm text-emerald-700">You cover every skill we detected. Nice.</p>
@@ -240,7 +254,12 @@ export function MatchPanel({
 
           {matched.length > 0 && (
             <>
-              <div className="mb-1.5 mt-4 text-xs font-medium text-gray-600">Matched ({matched.length})</div>
+              <div className="mb-1.5 mt-4 text-xs font-medium text-gray-600">
+                Matched ({matched.length})
+                {matched.some((k) => k.skillsOnly) && (
+                  <span className="font-normal text-gray-500"> · amber ones only count partly until a bullet shows them in use</span>
+                )}
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {matched.map((k) => (
                   <Chip key={k.display} k={k} />
@@ -251,6 +270,33 @@ export function MatchPanel({
         </div>
       )}
 
+      {learning.length > 0 && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50/60 p-4">
+          <div className="font-semibold">Prepare for interviews ({learning.length})</div>
+          <p className="mt-1 text-xs text-gray-600">
+            Skills you added from job posts. Be ready to talk about each one, or remove it.
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {learning.map((s) => (
+              <li key={s} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-violet-100">
+                <span className="font-medium">{s}</span>
+                <a href={prepLink(s)} target="_blank" rel="noreferrer" className="ml-auto text-xs font-medium text-brand hover:underline">
+                  Prep ↗
+                </a>
+                <button
+                  type="button"
+                  onClick={() => onRemoveLearning(s)}
+                  className="rounded px-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                  aria-label={`Remove ${s} from resume`}
+                  title="Remove from resume"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

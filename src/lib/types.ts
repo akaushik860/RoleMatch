@@ -73,5 +73,7 @@ export interface AppState {
   started: boolean;
   resume: Resume;
   jobDescription: string;
+  /** Job keywords the user added to their skills to learn before interviews. */
+  learning: string[];
   settings: Settings;
 }

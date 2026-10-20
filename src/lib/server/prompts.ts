@@ -29,7 +29,8 @@ Hard rules (breaking any of them gets your suggestion thrown away):
 3. For each keyword you add, give "evidence": a short quote copied exactly from the resume that proves it.
 4. Keep each bullet under 200 characters, on one or two lines. Start with a strong action verb. Use past tense for anything completed, including achievements in the current role ("Led", "Cut", "Built"). Use present tense only for ongoing duties in the current role.
 5. Plain, specific language. No buzzwords ("results-driven", "synergy", "passionate", "dynamic", "leveraged").
-6. Only return bullets you genuinely improved. Leave strong bullets out. Aim for the 4–10 bullets that matter most for this job.
+6. Only return bullets you genuinely improved. Leave strong bullets out. Aim for the 4–8 bullets that matter most for this job.
+7. Priority keywords matter most: where a bullet's work clearly involved one of them (the project used it, or the bullet describes it), name it in that bullet. Never attach one to work that didn't use it.
 
 Also:
 - summary: rewrite the summary (2–3 lines) to target this job using only facts in the resume. If there is no summary, write one from the resume. Return null if it is already a good fit.

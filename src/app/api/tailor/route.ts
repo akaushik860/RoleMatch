@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
   const raw = await req.text();
   if (raw.length > 120_000) return fail("That's too much text. Shorten the job description.", 413);
-  let body: { resume?: unknown; jd?: unknown; missing?: unknown };
+  let body: { resume?: unknown; jd?: unknown; missing?: unknown; skillsOnly?: unknown };
   try {
     body = JSON.parse(raw);
   } catch {
@@ -40,13 +40,18 @@ export async function POST(req: Request) {
 
   const resume = normalizeState({ resume: body.resume }).resume;
   const jd = typeof body.jd === "string" ? body.jd.trim().slice(0, 15_000) : "";
-  const missing = Array.isArray(body.missing) ? body.missing.filter((m): m is string => typeof m === "string").slice(0, 40) : [];
+  const strings = (v: unknown) => (Array.isArray(v) ? v.filter((m): m is string => typeof m === "string").slice(0, 40) : []);
+  const missing = strings(body.missing);
+  const skillsOnly = strings(body.skillsOnly);
   if (buildRefs(resume).size === 0 && !resume.summary.trim()) {
     return fail("Add some experience or project bullet points first.", 400);
   }
 
   const prompt = [
     jd ? `JOB DESCRIPTION:\n${jd}` : IMPROVE_ONLY_NOTE,
+    skillsOnly.length
+      ? `PRIORITY KEYWORDS (the job wants these; the resume lists them under Skills but no bullet shows them in use): ${skillsOnly.join(", ")}`
+      : "",
     missing.length ? `MISSING KEYWORDS (from the job, not found in the resume): ${missing.join(", ")}` : "",
     `RESUME (bullets are tagged with [ref]):\n${resumeForPrompt(resume)}`,
   ]

@@ -140,6 +140,13 @@ export default function TailorReview({
             </span>
           </div>
 
+          {jd.trim() && after <= before && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              These edits improve your wording but won&apos;t change your match score: the keywords you&apos;re missing aren&apos;t
+              anywhere in your resume yet. Close this and use <b>Add job keywords to my resume</b> on the Job match tab.
+            </p>
+          )}
+
           {result.discarded > 0 && (
             <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-900">
               🛡 We removed {result.discarded} AI suggestion{result.discarded === 1 ? "" : "s"} that added numbers, tools or claims not in your resume.

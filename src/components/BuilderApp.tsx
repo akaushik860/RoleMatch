@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { TailorResult } from "@/lib/ai";
-import { addSkill, analyze, type Keyword } from "@/lib/analyze";
+import { addSkill, analyze, removeSkill, type Keyword } from "@/lib/analyze";
 import { BRAND } from "@/lib/brand";
 import { LogoMark } from "./landing/Logo";
 import { DEFAULT_STATE, SAMPLE_RESUME, hasExampleDetails, scratchResume, uid } from "@/lib/sample";
@@ -12,6 +12,7 @@ import { clearLocal, downloadJson, getOwner, isUntouched, loadState, normalizeSt
 import { useAuth } from "./AuthProvider";
 import UserMenu from "./UserMenu";
 import type { AppState, Resume, Settings } from "@/lib/types";
+import AddKeywordsDialog from "./AddKeywordsDialog";
 import Editor from "./Editor";
 import ImportDialog from "./ImportDialog";
 import { ChecksPanel, MatchPanel, scoreColor } from "./MatchPanel";
@@ -67,6 +68,7 @@ export default function BuilderApp() {
   const previewBox = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   // ?import=1 reopens the import dialog after the user signs in to use it.
+  const [showAddKeywords, setShowAddKeywords] = useState(false);
   const [showImport, setShowImport] = useState(() => new URLSearchParams(window.location.search).get("import") === "1");
   const [tailorBusy, setTailorBusy] = useState(false);
   const [tailorError, setTailorError] = useState("");
@@ -173,6 +175,20 @@ export default function BuilderApp() {
 
   const onAddSkill = (k: Keyword) => setResume(addSkill(resume, k.display, k.category, uid));
 
+  const addLearning = (next: Resume, added: string[]) =>
+    setState((s) => ({
+      ...s,
+      resume: next,
+      learning: [...s.learning, ...added.filter((a) => !s.learning.some((l) => l.toLowerCase() === a.toLowerCase()))],
+    }));
+
+  const removeLearning = (skill: string) =>
+    setState((s) => ({
+      ...s,
+      resume: removeSkill(s.resume, skill),
+      learning: s.learning.filter((l) => l.toLowerCase() !== skill.toLowerCase()),
+    }));
+
   const print = () => {
     const prev = document.title;
     const name = resume.basics.name.trim().replace(/\s+/g, "_");
@@ -216,10 +232,11 @@ export default function BuilderApp() {
     setTailorError("");
     try {
       const missing = analysis.keywords.filter((k) => !k.matched && k.kind === "skill").map((k) => k.display);
+      const skillsOnly = analysis.keywords.filter((k) => k.skillsOnly).map((k) => k.display);
       const res = await fetch("/api/tailor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume, jd: analysis.hasJd ? jd : "", missing }),
+        body: JSON.stringify({ resume, jd: analysis.hasJd ? jd : "", missing, skillsOnly }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "AI request failed. Please try again.");
@@ -415,6 +432,9 @@ export default function BuilderApp() {
                 <MatchPanel jd={jd} onJdChange={(v) => setState((s) => ({ ...s, jobDescription: v }))} analysis={analysis}
                   onAddSkill={onAddSkill}
                   tailor={{ busy: tailorBusy, error: tailorError, left: credits?.tailor ?? null, needsSignIn, run: runTailor }}
+                  onAddKeywords={() => setShowAddKeywords(true)}
+                  learning={state.learning}
+                  onRemoveLearning={removeLearning}
                 />
               )}
               {tab === "checks" && <ChecksPanel issues={analysis.issues} />}
@@ -527,6 +547,18 @@ export default function BuilderApp() {
             if (!wasStarted) setUndo(null);
             setTab("edit");
           }}
+        />
+      )}
+
+      {showAddKeywords && (
+        <AddKeywordsDialog
+          resume={resume}
+          jd={jd}
+          pages={pages}
+          missing={analysis.keywords.filter((k) => !k.matched && k.kind === "skill")}
+          onApply={addLearning}
+          onRemove={removeLearning}
+          onClose={() => setShowAddKeywords(false)}
         />
       )}
 

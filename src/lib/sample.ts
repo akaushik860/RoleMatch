@@ -149,5 +149,6 @@ export const DEFAULT_STATE: AppState = {
   started: false,
   resume: EMPTY_RESUME,
   jobDescription: "",
+  learning: [],
   settings: { template: "classic", paper: "a4", zoom: 0 },
 };

@@ -32,6 +32,7 @@ export function normalizeState(input: unknown): AppState {
     // Saved states from before the start screen existed were already "started".
     started: typeof s.started === "boolean" ? s.started : true,
     jobDescription: typeof s.jobDescription === "string" ? s.jobDescription : "",
+    learning: Array.isArray(s.learning) ? s.learning.filter((x): x is string => typeof x === "string") : [],
     settings: { ...DEFAULT_STATE.settings, ...(s.settings ?? {}) },
     resume: {
       basics: { ...DEFAULT_STATE.resume.basics, links: [], ...(r.basics ?? {}) },
