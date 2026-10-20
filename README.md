@@ -1,8 +1,9 @@
 # RoleMatch: free tier MVP
 
-Resume builder + job description match checker + AI tailoring. No sign-up, no
-database: resumes live in the user's localStorage. Two small API routes call
-Gemini for import and tailoring, so the API key never reaches the browser.
+Resume builder + job description match checker + fact-checked AI tailoring.
+Guests can build and download without an account (saved in the browser); a free
+Google sign-in (Supabase) unlocks AI import/tailoring and saves the resume to the
+account. API routes call Gemini, so the AI key never reaches the browser.
 
 ## Run it
 
@@ -63,8 +64,8 @@ provider in Supabase (Authentication → Sign In / Providers), and add
   keywords weigh more than nice-to-haves), 15% measurable impact, 15%
   completeness, 10% writing quality. Without a job description it shows a
   "health" score instead.
-- `src/lib/storage.ts`: the only place that reads and writes saved data.
-  When accounts arrive (Plus tier), swap it for Supabase calls.
+- `src/lib/storage.ts`: the browser copy of the resume (guests, and a cache for
+  signed-in users). `src/lib/cloud.ts` saves it to the user's account.
 - PDF export uses the browser's print engine, so the PDF has real selectable text
   and embedded fonts. Nothing is turned into an image.
 
@@ -78,6 +79,6 @@ Every AI suggestion is checked in code before the user sees it
 
 ## Next (Plus tier)
 
-Supabase auth + database, Stripe (global) / Razorpay (India), usage limits
-stored per account instead of per browser, saved versions per job, cover letters.
+Stripe (global) / Razorpay (India) payments, saved versions per job, cover
+letters, Word export.
 All in this same Next.js project; no separate backend folder.
